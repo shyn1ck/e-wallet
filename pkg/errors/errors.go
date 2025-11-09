@@ -32,6 +32,10 @@ var (
 	ErrRelatedRecordNotFound = &APIError{"related_record_not_found", "Related record not found", http.StatusNotFound}
 	ErrAlreadyExists         = &APIError{"already_exists", "Already exists", http.StatusBadRequest}
 	ErrRecordNotFound        = &APIError{"record_not_found", "Record not found", http.StatusNotFound}
+	ErrEmptyAccountID        = &APIError{"empty_account_id", "Account ID cannot be empty", http.StatusBadRequest}
+	ErrInvalidAccountID      = &APIError{"invalid_account_id", "Invalid account ID", http.StatusBadRequest}
+	ErrInsufficientFunds     = &APIError{"insufficient_funds", "Insufficient funds", http.StatusBadRequest}
+	ErrInvalidWalletType     = &APIError{"invalid_wallet_type", "Invalid wallet type", http.StatusBadRequest}
 )
 
 // GetStatusCode returns HTTP status code
