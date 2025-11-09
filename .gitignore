@@ -23,3 +23,6 @@ vendor/
 # IntelliJ IDEA / GoLand
 .idea/
 *.iml
+/configs/config.yaml
+/.env
+/logs/
