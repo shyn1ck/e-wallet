@@ -4,12 +4,14 @@
 *.dll
 *.so
 *.dylib
+bin/
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool
 *.out
+coverage.html
 
 # Go workspace file
 go.work
@@ -23,6 +25,14 @@ vendor/
 # IntelliJ IDEA / GoLand
 .idea/
 *.iml
+
+# Configuration files
 /configs/config.yaml
 /.env
+
+# Logs
 /logs/
+
+# Temporary files
+tmp/
+*.tmp
