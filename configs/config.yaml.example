@@ -1,0 +1,45 @@
+app:
+  name: "E-Wallet API"
+  environment: "development"
+  version: "1.0.0"
+
+server:
+  host: "localhost"
+  port: "8080"
+  read_timeout: 60s
+  write_timeout: 300s
+  idle_timeout: 120s
+
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: ""  # From .env: POSTGRES_PASSWORD
+  database: "e_wallet_db"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 10
+  conn_max_lifetime_minutes: 5
+
+redis:
+  host: "localhost"
+  port: "6379"
+  password: ""  # From .env: REDIS_PASSWORD
+  db: 0
+  pool_size: 10
+
+log:
+  directory: "./logs"
+  info_file: "info.log"
+  error_file: "error.log"
+  warn_file: "warn.log"
+  debug_file: "debug.log"
+  gorm_file: "gorm.log"
+  max_size_megabytes: 30
+  max_backups: 10
+  max_age_days: 365
+  compress: true
+  local_time: true
+
+auth:
+  hmac_algorithm: "sha1"
