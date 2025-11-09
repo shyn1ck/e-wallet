@@ -4,7 +4,6 @@ import (
 	"e-wallet/internal/domain/entity"
 	"e-wallet/internal/domain/valueobject"
 	"e-wallet/internal/infrastructure/database/models"
-	"fmt"
 )
 
 type TransactionMapper struct{}
@@ -16,7 +15,7 @@ func NewTransactionMapper() *TransactionMapper {
 func (m *TransactionMapper) ToDomain(dbTx *models.Transaction) (*entity.Transaction, error) {
 	amount, err := valueobject.NewMoneyFromMinor(dbTx.Amount)
 	if err != nil {
-		return nil, fmt.Errorf("invalid amount: %w", err)
+		return nil, err
 	}
 
 	return &entity.Transaction{
