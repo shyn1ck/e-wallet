@@ -15,9 +15,20 @@ type RouterConfig struct {
 	WalletHandler *handler.WalletHandler
 	ClientRepo    repository.ClientRepository
 	HMACAlgorithm crypto.HMACAlgorithm
+	GinMode       string
 }
 
 func NewRouter(cfg *RouterConfig) *gin.Engine {
+	// Set Gin mode based on configuration
+	switch cfg.GinMode {
+	case "release":
+		gin.SetMode(gin.ReleaseMode)
+	case "debug":
+		gin.SetMode(gin.DebugMode)
+	default:
+		gin.SetMode(gin.DebugMode) // default to debug
+	}
+
 	router := gin.New()
 
 	// Global middleware
