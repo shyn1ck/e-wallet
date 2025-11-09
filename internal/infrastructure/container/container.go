@@ -101,6 +101,7 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		WalletHandler: c.WalletHandler,
 		ClientRepo:    c.ClientRepo,
 		HMACAlgorithm: crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
+		GinMode:       cfg.App.GinMode,
 	})
 
 	return c, nil
