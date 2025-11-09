@@ -16,6 +16,7 @@ type AppConfig struct {
 	Name        string `yaml:"name"`
 	Environment string `yaml:"environment"`
 	Version     string `yaml:"version"`
+	GinMode     string `yaml:"gin_mode"`
 }
 
 // ServerConfig - http server params

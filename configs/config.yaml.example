@@ -2,6 +2,7 @@ app:
   name: "E-Wallet API"
   environment: "development"
   version: "1.0.0"
+  gin_mode: "debug"  # "debug" or "release"
 
 server:
   host: "localhost"
