@@ -121,12 +121,15 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 
 	// Initialize router
 	c.Router = http.NewRouter(&http.RouterConfig{
-		WalletHandler:      c.WalletHandler,
-		ClientRepo:         c.ClientRepo,
-		ClientCacheUseCase: c.ClientCacheUseCase,
-		HMACAlgorithm:      crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
-		GinMode:            cfg.App.GinMode,
-		Environment:        cfg.App.Environment,
+		WalletHandler:       c.WalletHandler,
+		ClientRepo:          c.ClientRepo,
+		CacheRepo:           c.CacheRepo,
+		ClientCacheUseCase:  c.ClientCacheUseCase,
+		HMACAlgorithm:       crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
+		GinMode:             cfg.App.GinMode,
+		Environment:         cfg.App.Environment,
+		RateLimiterRequests: cfg.RateLimiter.RequestsPerWindow,
+		RateLimiterWindow:   cfg.RateLimiter.WindowDuration,
 	})
 
 	return c, nil
