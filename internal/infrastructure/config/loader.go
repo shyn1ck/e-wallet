@@ -17,7 +17,6 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("config file not found: %s", configPath)
 	}
 
-	// Load config.yaml
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("[config.LoadConfig]: failed to read config file: %w", err)
@@ -38,8 +37,16 @@ func LoadConfig(configPath string) (*Config, error) {
 }
 
 func overrideFromEnv(AppParams *Config) {
+	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
+		AppParams.Database.Host = dbHost
+	}
+
 	if dbPassword := os.Getenv("POSTGRES_PASSWORD"); dbPassword != "" {
 		AppParams.Database.Password = dbPassword
+	}
+
+	if redisHost := os.Getenv("REDIS_HOST"); redisHost != "" {
+		AppParams.Redis.Host = redisHost
 	}
 
 	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
@@ -48,6 +55,14 @@ func overrideFromEnv(AppParams *Config) {
 
 	if env := os.Getenv("APP_ENVIRONMENT"); env != "" {
 		AppParams.App.Environment = env
+		// Set GIN_MODE based on environment
+		if env == EnvironmentProduction {
+			AppParams.App.GinMode = GinModeRelease
+		}
+	}
+
+	if ginMode := os.Getenv("GIN_MODE"); ginMode != "" {
+		AppParams.App.GinMode = ginMode
 	}
 }
 
@@ -55,8 +70,8 @@ func validate(AppParams *Config) error {
 	if AppParams.App.Name == "" {
 		return fmt.Errorf("[config.validate]: app.name is required")
 	}
-	if AppParams.App.Environment != "development" && AppParams.App.Environment != "production" {
-		return fmt.Errorf("[config.validate]: app.environment must be 'development' or 'production'")
+	if AppParams.App.Environment != EnvironmentDevelopment && AppParams.App.Environment != EnvironmentProduction {
+		return fmt.Errorf("[config.validate]: app.environment must be '%s' or '%s'", EnvironmentDevelopment, EnvironmentProduction)
 	}
 
 	if AppParams.Server.Port == "" {
