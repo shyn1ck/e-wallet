@@ -8,9 +8,12 @@ import (
 	"e-wallet/internal/infrastructure/cache"
 	"e-wallet/internal/infrastructure/config"
 	"e-wallet/internal/infrastructure/database"
+	"e-wallet/internal/infrastructure/logger"
 	"e-wallet/internal/repository/postgres"
+	"e-wallet/internal/repository/redis"
 	"e-wallet/internal/usecase"
 	"e-wallet/pkg/crypto"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,6 +28,7 @@ type Container struct {
 	WalletRepo      repository.WalletRepository
 	TransactionRepo repository.TransactionRepository
 	ClientRepo      repository.ClientRepository
+	CacheRepo       repository.CacheRepository
 
 	// Services
 	BalanceValidator *service.BalanceValidator
@@ -34,6 +38,7 @@ type Container struct {
 	WalletDepositUseCase      *usecase.WalletDepositUseCase
 	WalletBalanceUseCase      *usecase.WalletBalanceUseCase
 	WalletMonthlyStatsUseCase *usecase.WalletMonthlyStatsUseCase
+	ClientCacheUseCase        *usecase.ClientCacheUseCase
 
 	// Handlers
 	WalletHandler *handler.WalletHandler
@@ -59,17 +64,30 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		return nil, err
 	}
 
-	// Initialize cache
+	// Initialize cache (optional for development)
 	redisClient, err := cache.NewRedisClient(cfg.Redis)
 	if err != nil {
-		return nil, err
+		// In development mode, Redis is optional - log warning and continue without cache
+		if cfg.App.Environment == config.EnvironmentDevelopment {
+			logger.Info.Println("[container.NewContainer]: Redis not available in development mode, continuing without cache")
+			c.Cache = nil
+		} else {
+			// In production mode, Redis is required
+			return nil, fmt.Errorf("[container.NewContainer]: failed to connect to Redis (required in production): %w", err)
+		}
+	} else {
+		c.Cache = redisClient
 	}
-	c.Cache = redisClient
 
 	// Initialize repositories
 	c.WalletRepo = postgres.NewWalletRepository(db)
 	c.TransactionRepo = postgres.NewTransactionRepository(db)
 	c.ClientRepo = postgres.NewClientRepository(db)
+
+	// Initialize cache repository if Redis is available
+	if c.Cache != nil {
+		c.CacheRepo = redis.NewCacheRepository(c.Cache)
+	}
 
 	// Initialize domain services
 	c.BalanceValidator = service.NewBalanceValidator()
@@ -88,6 +106,11 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		c.TransactionRepo,
 	)
 
+	// Initialize client cache use case if cache is available
+	if c.CacheRepo != nil {
+		c.ClientCacheUseCase = usecase.NewClientCacheUseCase(c.ClientRepo, c.CacheRepo)
+	}
+
 	// Initialize handlers
 	c.WalletHandler = handler.NewWalletHandler(
 		c.WalletCheckUseCase,
@@ -98,10 +121,11 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 
 	// Initialize router
 	c.Router = http.NewRouter(&http.RouterConfig{
-		WalletHandler: c.WalletHandler,
-		ClientRepo:    c.ClientRepo,
-		HMACAlgorithm: crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
-		GinMode:       cfg.App.GinMode,
+		WalletHandler:      c.WalletHandler,
+		ClientRepo:         c.ClientRepo,
+		ClientCacheUseCase: c.ClientCacheUseCase,
+		HMACAlgorithm:      crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
+		GinMode:            cfg.App.GinMode,
 	})
 
 	return c, nil
