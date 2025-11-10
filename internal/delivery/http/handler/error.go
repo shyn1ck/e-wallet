@@ -20,6 +20,5 @@ func HandleError(c *gin.Context, err error) {
 	c.JSON(statusCode, response.ErrorResponse{
 		Error:   errorCode,
 		Message: errorMessage,
-		Code:    errorCode,
 	})
 }
