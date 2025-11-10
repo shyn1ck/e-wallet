@@ -37,6 +37,9 @@ vendor/
 tmp/
 *.tmp
 
+# Backups
+/backups/
+
 # Swagger auto-generated files
 /docs/docs.go
 /docs/swagger.json
