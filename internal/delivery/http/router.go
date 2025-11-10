@@ -18,12 +18,15 @@ import (
 )
 
 type RouterConfig struct {
-	WalletHandler      *handler.WalletHandler
-	ClientRepo         repository.ClientRepository
-	ClientCacheUseCase *usecase.ClientCacheUseCase
-	HMACAlgorithm      crypto.HMACAlgorithm
-	GinMode            string
-	Environment        string
+	WalletHandler       *handler.WalletHandler
+	ClientRepo          repository.ClientRepository
+	CacheRepo           repository.CacheRepository
+	ClientCacheUseCase  *usecase.ClientCacheUseCase
+	HMACAlgorithm       crypto.HMACAlgorithm
+	GinMode             string
+	Environment         string
+	RateLimiterRequests int
+	RateLimiterWindow   time.Duration
 }
 
 func NewRouter(cfg *RouterConfig) *gin.Engine {
@@ -45,9 +48,14 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 	router.Use(middleware.RequestID())
 	router.Use(middleware.Logger())
 
-	// Rate limiter: 100 requests per minute
-	rateLimiter := middleware.NewRateLimiter(100, time.Minute)
-	router.Use(rateLimiter.Middleware())
+	// Rate limiter (Redis-based)
+	if cfg.CacheRepo != nil {
+		rateLimiter := middleware.NewRateLimiter(cfg.CacheRepo, cfg.RateLimiterRequests, cfg.RateLimiterWindow)
+		router.Use(rateLimiter.Middleware())
+	} else {
+		// Log warning if cache is not available
+		panic("CacheRepo is nil - rate limiter cannot work!")
+	}
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
