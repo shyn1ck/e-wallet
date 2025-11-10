@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"e-wallet/internal/delivery/http/handler"
+	"e-wallet/internal/domain/entity"
 	"e-wallet/internal/domain/repository"
 	"e-wallet/internal/infrastructure/logger"
+	"e-wallet/internal/usecase"
 	"e-wallet/pkg/crypto"
 	apperrors "e-wallet/pkg/errors"
 	"io"
@@ -11,8 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HMACAuth validates HMAC authentication
-func HMACAuth(clientRepo repository.ClientRepository, algorithm crypto.HMACAlgorithm) gin.HandlerFunc {
+// HMACAuth validates HMAC authentication with caching support
+func HMACAuth(clientRepo repository.ClientRepository, clientCacheUseCase *usecase.ClientCacheUseCase, algorithm crypto.HMACAlgorithm) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetHeader("X-UserId")
 		digest := c.GetHeader("X-Digest")
@@ -26,7 +28,6 @@ func HMACAuth(clientRepo repository.ClientRepository, algorithm crypto.HMACAlgor
 
 		body, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			logger.Error.Printf("[middleware.HMACAuth]: Failed to read request body: %v", err)
 			handler.HandleError(c, apperrors.ErrInvalidRequest)
 			c.Abort()
 			return
@@ -34,9 +35,15 @@ func HMACAuth(clientRepo repository.ClientRepository, algorithm crypto.HMACAlgor
 
 		c.Request.Body = io.NopCloser(&bodyReader{body: body, pos: 0})
 
-		client, err := clientRepo.FindByUserID(c.Request.Context(), userID)
+		var client *entity.APIClient
+		if clientCacheUseCase != nil {
+			client, err = clientCacheUseCase.GetClient(c.Request.Context(), userID)
+		} else {
+			client, err = clientRepo.FindByUserID(c.Request.Context(), userID)
+		}
+
 		if err != nil {
-			logger.Error.Printf("[middleware.HMACAuth]: Client not found: %s", userID)
+			logger.Error.Printf("[middleware.HMACAuth]: Client not found for userID '%s': %v", userID, err)
 			handler.HandleError(c, apperrors.ErrClientNotFound)
 			c.Abort()
 			return
