@@ -21,7 +21,7 @@ compute_hmac() {
     echo -n "$data" | openssl dgst -sha1 -hmac "$SECRET_KEY" | cut -d' ' -f2
 }
 
-# Function to make API request
+# Function to make API request (expects success)
 api_request() {
     local endpoint="$1"
     local data="$2"
@@ -46,6 +46,35 @@ api_request() {
     else
         echo -e "${GREEN}✓ Test passed${NC}"
         return 0
+    fi
+}
+
+# Function to make API request (expects error)
+api_request_error() {
+    local endpoint="$1"
+    local data="$2"
+    local expected_error="$3"
+    # shellcheck disable=SC2155
+    local digest=$(compute_hmac "$data")
+    
+    echo -e "${YELLOW}Testing: $endpoint${NC}"
+    echo "Request: $data"
+    
+    response=$(curl -s -X POST "$API_URL$endpoint" \
+        -H "Content-Type: application/json" \
+        -H "X-UserId: $USER_ID" \
+        -H "X-Digest: $digest" \
+        -d "$data")
+    
+    echo "Response: $response"
+    echo ""
+    
+    if echo "$response" | grep -q "$expected_error"; then
+        echo -e "${GREEN}✓ Test passed (error expected)${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Test failed (expected error: $expected_error)${NC}"
+        return 1
     fi
 }
 
@@ -86,24 +115,24 @@ echo ""
 
 # Test 6: Deposit exceeding limit (unidentified)
 echo -e "${YELLOW}Test 6: Deposit Exceeding Limit (should fail)${NC}"
-api_request "/wallet/deposit" '{"account_id":"992901234567","amount":2000000}'
+api_request_error "/wallet/deposit" '{"account_id":"992901234567","amount":2000000}' "BALANCE_LIMIT_EXCEEDED"
 echo "========================================="
 echo ""
 
 # Test 7: Invalid amount
 echo -e "${YELLOW}Test 7: Invalid Amount (should fail)${NC}"
-api_request "/wallet/deposit" '{"account_id":"992900123456","amount":-1000}'
+api_request_error "/wallet/deposit" '{"account_id":"992900123456","amount":-1000}' "VALIDATION_FAILED"
 echo "========================================="
 echo ""
 
 # Test 8: Missing authentication
 echo -e "${YELLOW}Test 8: Missing Authentication (should fail)${NC}"
-response=$(curl -s -X POST "$API_URL/wallet/check" \
+response=$(curl -s -X POST "$API_URL/wallet/balance" \
     -H "Content-Type: application/json" \
     -d '{"account_id":"992900123456"}')
 echo "Response: $response"
 if echo "$response" | grep -q "MISSING_AUTH_DATA"; then
-    echo -e "${GREEN}✓ Test passed${NC}"
+    echo -e "${GREEN}✓ Test passed (error expected)${NC}"
 else
     echo -e "${RED}✗ Test failed${NC}"
 fi
@@ -112,18 +141,18 @@ echo ""
 
 # Test 9: Invalid HMAC signature
 echo -e "${YELLOW}Test 9: Invalid HMAC Signature (should fail)${NC}"
-response=$(curl -s -X POST "$API_URL/wallet/check" \
+response=$(curl -s -X POST "$API_URL/wallet/balance" \
     -H "Content-Type: application/json" \
     -H "X-UserId: $USER_ID" \
-    -H "X-Digest: invalid_digest" \
+    -H "X-Digest: invalid_signature_here" \
     -d '{"account_id":"992900123456"}')
 echo "Response: $response"
 if echo "$response" | grep -q "INVALID_SIGNATURE"; then
-    echo -e "${GREEN}✓ Test passed${NC}"
+    echo -e "${GREEN}✓ Test passed (error expected)${NC}"
 else
     echo -e "${RED}✗ Test failed${NC}"
 fi
 echo "========================================="
-echo ""
 
+echo ""
 echo -e "${GREEN}All tests completed!${NC}"
