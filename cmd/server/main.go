@@ -54,10 +54,12 @@ func main() {
 	// Start server in goroutine
 	go func() {
 		fmt.Println("Starting server...")
-		fmt.Printf("Starting %s v%s in %s mode", cfg.App.Name, cfg.App.Version, cfg.App.Environment)
-		fmt.Printf("Server listening on %s", server.Addr)
+		fmt.Printf("Starting %s v%s in %s mode\n", cfg.App.Name, cfg.App.Version, cfg.App.Environment)
+		fmt.Printf("Server listening on %s\n", server.Addr)
+		logger.Info.Printf("Server listening on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("Server failed to start: %v", err)
+			logger.Error.Printf("Server failed to start: %v", err)
+			fmt.Printf("Server failed to start: %v\n", err)
 			os.Exit(1)
 		}
 	}()
