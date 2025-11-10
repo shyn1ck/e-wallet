@@ -4,6 +4,7 @@ import (
 	"context"
 	"e-wallet/internal/domain/entity"
 	"e-wallet/internal/domain/repository"
+	"e-wallet/internal/infrastructure/database"
 	"e-wallet/internal/infrastructure/database/models"
 	"e-wallet/internal/infrastructure/logger"
 	"e-wallet/internal/repository/mapper"
@@ -26,8 +27,9 @@ func NewTransactionRepository(db *gorm.DB) *TransactionRepository {
 }
 
 func (r *TransactionRepository) Create(ctx context.Context, transaction *entity.Transaction) error {
+	db := database.GetDB(ctx, r.db)
 	dbTx := r.mapper.ToModel(transaction)
-	err := r.db.WithContext(ctx).Create(dbTx).Error
+	err := db.WithContext(ctx).Create(dbTx).Error
 	if err != nil {
 		logger.Error.Printf("[postgres.Create]: Failed to create transaction for wallet_id %d: %v", transaction.WalletID, err)
 		return apperrors.TranslateError(err)
@@ -40,8 +42,9 @@ func (r *TransactionRepository) Create(ctx context.Context, transaction *entity.
 }
 
 func (r *TransactionRepository) FindByWalletID(ctx context.Context, walletID int64) ([]*entity.Transaction, error) {
+	db := database.GetDB(ctx, r.db)
 	var dbTransactions []models.Transaction
-	err := r.db.WithContext(ctx).Where("wallet_id = ?", walletID).Order("created_at DESC").Find(&dbTransactions).Error
+	err := db.WithContext(ctx).Where("wallet_id = ?", walletID).Order("created_at DESC").Find(&dbTransactions).Error
 	if err != nil {
 		logger.Error.Printf("[postgres.FindByWalletID]: Failed to find transactions for wallet_id %d: %v", walletID, err)
 		return nil, apperrors.TranslateError(err)
@@ -64,8 +67,9 @@ func (r *TransactionRepository) GetMonthlyStats(ctx context.Context, walletID in
 	firstDay := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, month.Location())
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Second)
 
+	db := database.GetDB(ctx, r.db)
 	var stats repository.MonthlyStats
-	err := r.db.WithContext(ctx).
+	err := db.WithContext(ctx).
 		Model(&models.Transaction{}).
 		Select("COUNT(*) as total_count, COALESCE(SUM(amount), 0) as total_amount").
 		Where("wallet_id = ? AND type = ? AND created_at BETWEEN ? AND ?",
