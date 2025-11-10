@@ -8,6 +8,7 @@ import (
 	"e-wallet/internal/domain/valueobject"
 	"e-wallet/internal/dto/request"
 	"e-wallet/internal/dto/response"
+	"e-wallet/internal/infrastructure/database"
 	"e-wallet/internal/infrastructure/logger"
 	apperrors "e-wallet/pkg/errors"
 	"e-wallet/pkg/validator"
@@ -59,8 +60,9 @@ func (uc *WalletDepositUseCase) Execute(ctx context.Context, req *request.Deposi
 	// Start transaction
 	var resp *response.DepositResponse
 	err = uc.db.Transaction(func(tx *gorm.DB) error {
-		// Find wallet
-		wallet, err := uc.walletRepo.FindByAccountID(ctx, accountID)
+		txCtx := database.InjectTx(ctx, tx)
+
+		wallet, err := uc.walletRepo.FindByAccountID(txCtx, accountID)
 		if err != nil {
 			return err
 		}
@@ -79,13 +81,13 @@ func (uc *WalletDepositUseCase) Execute(ctx context.Context, req *request.Deposi
 		}
 
 		// Update wallet
-		if err := uc.walletRepo.Update(ctx, wallet); err != nil {
+		if err := uc.walletRepo.Update(txCtx, wallet); err != nil {
 			return err
 		}
 
 		// Create transaction record
 		transaction := entity.NewTransaction(wallet.ID, entity.TransactionTypeDeposit, amount)
-		if err := uc.transactionRepo.Create(ctx, transaction); err != nil {
+		if err := uc.transactionRepo.Create(txCtx, transaction); err != nil {
 			return err
 		}
 
