@@ -14,6 +14,23 @@ import (
 	"time"
 )
 
+// @title E-Wallet API
+// @version 1.0.0
+// @description REST API for electronic wallet services with HMAC-SHA1 authentication. Supports identified wallets (limit 100,000 TJS) and unidentified wallets (limit 10,000 TJS). All amounts are in dirams (1 TJS = 100 dirams).
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey HMACAuth
+// @in header
+// @name X-UserId
+// @description Client User ID for HMAC authentication (e.g., alif_partner)
+
+// @securityDefinitions.apikey HMACDigest
+// @in header
+// @name X-Digest
+// @description HMAC-SHA1 signature of request body (hex-encoded)
+
 func main() {
 	// Load config
 	fmt.Println("Loading config...")
