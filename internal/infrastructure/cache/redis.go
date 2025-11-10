@@ -27,22 +27,22 @@ func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 		MinIdleConns:    1,
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Override stderr to suppress Redis client warnings temporarily
 	oldStderr := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w
 
 	err := client.Ping(ctx).Err()
 
-	// Restore stderr
-	w.Close()
+	err = w.Close()
+	if err != nil {
+		logger.Error.Printf("[cache.NewRedisClient]: Failed to close stderr pipe: %v", err)
+		return nil, err
+	}
 	os.Stderr = oldStderr
 
-	// Read and discard the warning output
 	go func() {
 		buf := make([]byte, 1024)
 		for {
@@ -50,12 +50,12 @@ func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 				break
 			}
 		}
-		r.Close()
+		err := r.Close()
+		if err != nil {
+			logger.Error.Printf("[cache.NewRedisClient]: Failed to close stderr pipe: %v", err)
+			return
+		}
 	}()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-	}
 
 	logger.Info.Println("Successfully connected to Redis")
 
