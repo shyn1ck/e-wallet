@@ -36,3 +36,8 @@ vendor/
 # Temporary files
 tmp/
 *.tmp
+
+# Swagger auto-generated files
+/docs/docs.go
+/docs/swagger.json
+/docs/swagger.yaml
