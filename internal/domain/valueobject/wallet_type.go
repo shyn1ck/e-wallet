@@ -12,6 +12,11 @@ const (
 	WalletTypeUnidentified WalletType = "unidentified"
 )
 
+const (
+	MaxBalanceIdentified   = 10000000 // 100,000 TJS in dirams
+	MaxBalanceUnidentified = 1000000  // 10,000 TJS in dirams
+)
+
 func NewWalletType(value string) (WalletType, error) {
 	normalized := WalletType(strings.ToLower(strings.TrimSpace(value)))
 
@@ -33,9 +38,9 @@ func (wt WalletType) IsIdentified() bool {
 func (wt WalletType) MaxBalance() (Money, error) {
 	switch wt {
 	case WalletTypeIdentified:
-		return NewMoney(10000000) // 100,000 TJS = 10,000,000 diram
+		return NewMoney(MaxBalanceIdentified)
 	case WalletTypeUnidentified:
-		return NewMoney(1000000) // 10,000 TJS = 1,000,000 diram
+		return NewMoney(MaxBalanceUnidentified)
 	default:
 		return Money{}, apperrors.ErrInvalidWalletType
 	}
