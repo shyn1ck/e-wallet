@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"e-wallet/internal/domain/entity"
+	"e-wallet/internal/infrastructure/database"
 	"e-wallet/internal/infrastructure/database/models"
 	"e-wallet/internal/infrastructure/logger"
 	"e-wallet/internal/repository/mapper"
@@ -26,8 +27,9 @@ func NewClientRepository(db *gorm.DB) *ClientRepository {
 
 // FindByUserID retrieves an API client by user ID
 func (r *ClientRepository) FindByUserID(ctx context.Context, userID string) (*entity.APIClient, error) {
+	db := database.GetDB(ctx, r.db)
 	var dbClient models.APIClient
-	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&dbClient).Error
+	err := db.WithContext(ctx).Where("user_id = ?", userID).First(&dbClient).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperrors.ErrClientNotFound
@@ -41,8 +43,9 @@ func (r *ClientRepository) FindByUserID(ctx context.Context, userID string) (*en
 
 // Create creates a new API client
 func (r *ClientRepository) Create(ctx context.Context, client *entity.APIClient) error {
+	db := database.GetDB(ctx, r.db)
 	dbClient := r.mapper.ToModel(client)
-	err := r.db.WithContext(ctx).Create(dbClient).Error
+	err := db.WithContext(ctx).Create(dbClient).Error
 	if err != nil {
 		logger.Error.Printf("[postgres.Create]: Failed to create client: %v", err)
 		return apperrors.TranslateError(err)
@@ -57,8 +60,9 @@ func (r *ClientRepository) Create(ctx context.Context, client *entity.APIClient)
 
 // Update updates an existing API client
 func (r *ClientRepository) Update(ctx context.Context, client *entity.APIClient) error {
+	db := database.GetDB(ctx, r.db)
 	dbClient := r.mapper.ToModel(client)
-	err := r.db.WithContext(ctx).Save(dbClient).Error
+	err := db.WithContext(ctx).Save(dbClient).Error
 	if err != nil {
 		logger.Error.Printf("[postgres.Update]: Failed to update client id %d: %v", client.ID, err)
 		return apperrors.TranslateError(err)
