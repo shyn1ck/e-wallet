@@ -4,6 +4,7 @@ import (
 	"e-wallet/internal/delivery/http/handler"
 	"e-wallet/internal/delivery/http/middleware"
 	"e-wallet/internal/domain/repository"
+	"e-wallet/internal/usecase"
 	"e-wallet/pkg/crypto"
 	"net/http"
 	"time"
@@ -12,14 +13,14 @@ import (
 )
 
 type RouterConfig struct {
-	WalletHandler *handler.WalletHandler
-	ClientRepo    repository.ClientRepository
-	HMACAlgorithm crypto.HMACAlgorithm
-	GinMode       string
+	WalletHandler      *handler.WalletHandler
+	ClientRepo         repository.ClientRepository
+	ClientCacheUseCase *usecase.ClientCacheUseCase
+	HMACAlgorithm      crypto.HMACAlgorithm
+	GinMode            string
 }
 
 func NewRouter(cfg *RouterConfig) *gin.Engine {
-	// Set Gin mode based on configuration
 	switch cfg.GinMode {
 	case "release":
 		gin.SetMode(gin.ReleaseMode)
@@ -49,7 +50,7 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 
 	// API v1 routes with HMAC authentication
 	v1 := router.Group("/api/v1")
-	v1.Use(middleware.HMACAuth(cfg.ClientRepo, cfg.HMACAlgorithm))
+	v1.Use(middleware.HMACAuth(cfg.ClientRepo, cfg.ClientCacheUseCase, cfg.HMACAlgorithm))
 	{
 		// Wallet routes
 		wallet := v1.Group("/wallet")
