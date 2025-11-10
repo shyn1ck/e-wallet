@@ -16,12 +16,13 @@ const (
 )
 
 type Config struct {
-	App      AppConfig      `yaml:"app"`
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Log      LogConfig      `yaml:"log"`
-	Auth     AuthConfig     `yaml:"auth"`
+	App         AppConfig         `yaml:"app"`
+	Server      ServerConfig      `yaml:"server"`
+	Database    DatabaseConfig    `yaml:"database"`
+	Redis       RedisConfig       `yaml:"redis"`
+	Log         LogConfig         `yaml:"log"`
+	Auth        AuthConfig        `yaml:"auth"`
+	RateLimiter RateLimiterConfig `yaml:"rate_limiter"`
 }
 
 // AppConfig - App params
@@ -81,4 +82,10 @@ type LogConfig struct {
 // AuthConfig - auth params
 type AuthConfig struct {
 	HMACAlgorithm string `yaml:"hmac_algorithm"`
+}
+
+// RateLimiterConfig - rate limiter params
+type RateLimiterConfig struct {
+	RequestsPerWindow int           `yaml:"requests_per_window"`
+	WindowDuration    time.Duration `yaml:"window_duration"`
 }

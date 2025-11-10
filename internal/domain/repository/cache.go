@@ -11,4 +11,6 @@ type CacheRepository interface {
 	Set(ctx context.Context, key string, value string, expiration time.Duration) error
 	Delete(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)
+	Incr(ctx context.Context, key string) (int64, error)
+	Expire(ctx context.Context, key string, expiration time.Duration) error
 }

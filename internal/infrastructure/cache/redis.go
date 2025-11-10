@@ -30,17 +30,15 @@ func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Suppress stderr during ping to avoid connection error spam
 	oldStderr := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w
 
-	err := client.Ping(ctx).Err()
+	pingErr := client.Ping(ctx).Err()
 
-	err = w.Close()
-	if err != nil {
-		logger.Error.Printf("[cache.NewRedisClient]: Failed to close stderr pipe: %v", err)
-		return nil, err
-	}
+	// Restore stderr
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	go func() {
@@ -50,12 +48,12 @@ func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 				break
 			}
 		}
-		err := r.Close()
-		if err != nil {
-			logger.Error.Printf("[cache.NewRedisClient]: Failed to close stderr pipe: %v", err)
-			return
-		}
+		_ = r.Close()
 	}()
+
+	if pingErr != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", pingErr)
+	}
 
 	logger.Info.Println("Successfully connected to Redis")
 
@@ -75,6 +73,16 @@ func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, ex
 // Delete removes a value from cache
 func (r *RedisClient) Delete(ctx context.Context, key string) error {
 	return r.client.Del(ctx, key).Err()
+}
+
+// Incr atomically increments a key and returns the new value
+func (r *RedisClient) Incr(ctx context.Context, key string) (int64, error) {
+	return r.client.Incr(ctx, key).Result()
+}
+
+// Expire sets a timeout on a key
+func (r *RedisClient) Expire(ctx context.Context, key string, expiration time.Duration) error {
+	return r.client.Expire(ctx, key, expiration).Err()
 }
 
 // Close closes the Redis connection

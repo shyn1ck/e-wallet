@@ -1,39 +1,44 @@
 package middleware
 
 import (
+	"context"
 	"e-wallet/internal/delivery/http/handler"
+	"e-wallet/internal/domain/repository"
+	"e-wallet/internal/infrastructure/logger"
 	apperrors "e-wallet/pkg/errors"
-	"sync"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RateLimiter struct {
-	requests map[string][]time.Time
-	mu       sync.RWMutex
-	limit    int
-	window   time.Duration
+	cache  repository.CacheRepository
+	limit  int
+	window time.Duration
 }
 
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	rl := &RateLimiter{
-		requests: make(map[string][]time.Time),
-		limit:    limit,
-		window:   window,
+func NewRateLimiter(cache repository.CacheRepository, limit int, window time.Duration) *RateLimiter {
+	return &RateLimiter{
+		cache:  cache,
+		limit:  limit,
+		window: window,
 	}
-
-	// Cleanup goroutine
-	go rl.cleanup()
-
-	return rl
 }
 
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
 
-		if !rl.allow(clientIP) {
+		allowed, err := rl.allow(c.Request.Context(), clientIP)
+		if err != nil {
+			logger.Error.Printf("[RateLimiter]: Error checking rate limit for IP %s: %v", clientIP, err)
+			c.Next()
+			return
+		}
+
+		if !allowed {
+			logger.Warning.Printf("[RateLimiter]: Rate limit exceeded for IP: %s", clientIP)
 			handler.HandleError(c, apperrors.ErrRateLimitExceeded)
 			c.Abort()
 			return
@@ -43,55 +48,28 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	}
 }
 
-func (rl *RateLimiter) allow(key string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
+// allow checks if request is allowed using Redis atomic counter
+func (rl *RateLimiter) allow(ctx context.Context, ip string) (bool, error) {
+	key := fmt.Sprintf("rate_limit:%s", ip)
 
-	now := time.Now()
-	windowStart := now.Add(-rl.window)
+	count, err := rl.cache.Incr(ctx, key)
+	if err != nil {
+		logger.Error.Printf("[RateLimiter]: Error incrementing rate limit for IP %s: %v", ip, err)
+		return true, nil
+	}
 
-	requests := rl.requests[key]
-
-	var validRequests []time.Time
-	for _, t := range requests {
-		if t.After(windowStart) {
-			validRequests = append(validRequests, t)
+	if count == 1 {
+		if err := rl.cache.Expire(ctx, key, rl.window); err != nil {
+			logger.Error.Printf("[RateLimiter]: Failed to set expiration for IP %s: %v", ip, err)
 		}
 	}
 
-	if len(validRequests) >= rl.limit {
-		return false
+	if count > int64(rl.limit) {
+		logger.Warning.Printf("[RateLimiter]: Rate limit exceeded for IP %s: %d/%d", ip, count, rl.limit)
+		return false, nil
 	}
 
-	validRequests = append(validRequests, now)
-	rl.requests[key] = validRequests
+	logger.Debug.Printf("[RateLimiter]: IP %s - %d/%d requests in window", ip, count, rl.limit)
 
-	return true
-}
-
-func (rl *RateLimiter) cleanup() {
-	ticker := time.NewTicker(rl.window)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		windowStart := now.Add(-rl.window)
-
-		for key, requests := range rl.requests {
-			var validRequests []time.Time
-			for _, t := range requests {
-				if t.After(windowStart) {
-					validRequests = append(validRequests, t)
-				}
-			}
-
-			if len(validRequests) == 0 {
-				delete(rl.requests, key)
-			} else {
-				rl.requests[key] = validRequests
-			}
-		}
-		rl.mu.Unlock()
-	}
+	return true, nil
 }
