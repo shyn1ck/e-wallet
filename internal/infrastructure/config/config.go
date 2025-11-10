@@ -2,6 +2,19 @@ package config
 
 import "time"
 
+// Environment constants
+const (
+	EnvironmentDevelopment = "development"
+	EnvironmentProduction  = "production"
+)
+
+// Gin mode constants
+const (
+	GinModeDebug   = "debug"
+	GinModeRelease = "release"
+	GinModeTest    = "test"
+)
+
 type Config struct {
 	App      AppConfig      `yaml:"app"`
 	Server   ServerConfig   `yaml:"server"`
