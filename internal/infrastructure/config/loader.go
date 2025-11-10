@@ -98,8 +98,8 @@ func validate(AppParams *Config) error {
 		return fmt.Errorf("[config.validate]: log.directory is required")
 	}
 
-	if AppParams.Auth.HMACAlgorithm != "sha1" && AppParams.Auth.HMACAlgorithm != "sha256" {
-		return fmt.Errorf("[config.validate]: auth.hmac_algorithm must be 'sha1' or 'sha256'")
+	if AppParams.Auth.HMACAlgorithm != HMACAlgorithmSHA1 && AppParams.Auth.HMACAlgorithm != HMACAlgorithmSHA256 {
+		return fmt.Errorf("[config.validate]: auth.hmac_algorithm must be '%s' or '%s'", HMACAlgorithmSHA1, HMACAlgorithmSHA256)
 	}
 
 	return nil
