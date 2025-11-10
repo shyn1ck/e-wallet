@@ -126,6 +126,7 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		ClientCacheUseCase: c.ClientCacheUseCase,
 		HMACAlgorithm:      crypto.HMACAlgorithm(cfg.Auth.HMACAlgorithm),
 		GinMode:            cfg.App.GinMode,
+		Environment:        cfg.App.Environment,
 	})
 
 	return c, nil
