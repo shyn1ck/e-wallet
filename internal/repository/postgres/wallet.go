@@ -8,6 +8,7 @@ import (
 	"e-wallet/internal/infrastructure/logger"
 	"e-wallet/internal/repository/mapper"
 	apperrors "e-wallet/pkg/errors"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -29,6 +30,9 @@ func (r *WalletRepository) FindByAccountID(ctx context.Context, accountID valueo
 	var dbWallet models.Wallet
 	err := r.db.WithContext(ctx).Where("account_id = ?", accountID.Value()).First(&dbWallet).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrWalletNotFound
+		}
 		logger.Error.Printf("[postgres.FindByAccountID]: Failed to find wallet by account_id %s: %v", accountID.Value(), err)
 		return nil, apperrors.TranslateError(err)
 	}
@@ -41,6 +45,9 @@ func (r *WalletRepository) FindByID(ctx context.Context, id int64) (*entity.Wall
 	var dbWallet models.Wallet
 	err := r.db.WithContext(ctx).First(&dbWallet, id).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrWalletNotFound
+		}
 		logger.Error.Printf("[postgres.FindByID]: Failed to find wallet by id %d: %v", id, err)
 		return nil, apperrors.TranslateError(err)
 	}
