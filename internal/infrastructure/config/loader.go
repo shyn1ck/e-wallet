@@ -84,7 +84,7 @@ func validate(AppParams *Config) error {
 		return fmt.Errorf("[config.validate]: database.user is required")
 	}
 	if AppParams.Database.Password == "" {
-		return fmt.Errorf("[config.validate]: database.password is required (set DB_PASSWORD in .env)")
+		return fmt.Errorf("[config.validate]: database.password is required (set POSTGRES_PASSWORD in .env)")
 	}
 	if AppParams.Database.Database == "" {
 		return fmt.Errorf("[config.validate]: database.database is required")
