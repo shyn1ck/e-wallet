@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: e-wallet-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: e_wallet_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e-wallet-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: e-wallet-redis
+    env_file:
+      - .env
+    command: >
+      sh -c '
+      if [ -n "$REDIS_PASSWORD" ]; then
+        redis-server --requirepass "$REDIS_PASSWORD"
+      else
+        redis-server
+      fi
+      '
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: >
+        sh -c '
+        if [ -n "$REDIS_PASSWORD" ]; then
+          redis-cli -a "$REDIS_PASSWORD" ping
+        else
+          redis-cli ping
+        fi
+        '
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e-wallet-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: e-wallet-app
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - e-wallet-network
+    restart: unless-stopped
+
+networks:
+  e-wallet-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
