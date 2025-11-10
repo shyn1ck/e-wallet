@@ -7,6 +7,7 @@ import (
 	"e-wallet/internal/infrastructure/logger"
 	"e-wallet/internal/repository/mapper"
 	apperrors "e-wallet/pkg/errors"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -28,7 +29,10 @@ func (r *ClientRepository) FindByUserID(ctx context.Context, userID string) (*en
 	var dbClient models.APIClient
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&dbClient).Error
 	if err != nil {
-		logger.Error.Printf("[postgres.FindByUserID]: Failed to find client by user_id %s: %v", userID, err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrClientNotFound
+		}
+		logger.Error.Printf("[postgres.FindByUserID]: Failed to find client by user_id '%s': %v", userID, err)
 		return nil, apperrors.TranslateError(err)
 	}
 
