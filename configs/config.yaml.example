@@ -44,3 +44,7 @@ log:
 
 auth:
   hmac_algorithm: "sha1"
+
+rate_limiter:
+  requests_per_window: 100  # Maximum requests per window
+  window_duration: 60s      # Time window duration (e.g., 60s, 1m, 5m)
