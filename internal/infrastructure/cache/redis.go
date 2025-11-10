@@ -5,6 +5,7 @@ import (
 	"e-wallet/internal/infrastructure/config"
 	"e-wallet/internal/infrastructure/logger"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -18,17 +19,41 @@ type RedisClient struct {
 // NewRedisClient creates a new Redis client
 func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		Password: cfg.Password,
-		DB:       cfg.DB,
-		PoolSize: cfg.PoolSize,
+		Addr:            fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Password:        cfg.Password,
+		DB:              cfg.DB,
+		PoolSize:        cfg.PoolSize,
+		DisableIdentity: true,
+		MinIdleConns:    1,
 	})
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Ping(ctx).Err(); err != nil {
+	// Override stderr to suppress Redis client warnings temporarily
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	err := client.Ping(ctx).Err()
+
+	// Restore stderr
+	w.Close()
+	os.Stderr = oldStderr
+
+	// Read and discard the warning output
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			if n, _ := r.Read(buf); n == 0 {
+				break
+			}
+		}
+		r.Close()
+	}()
+
+	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
